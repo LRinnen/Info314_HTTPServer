@@ -1,0 +1,7 @@
+1. https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/PUT - How to structure the requestsHandlers
+2. https://coderanch.com/t/422986/java/Creating-File-URI - How to create a new file with the path
+3. https://www.javatpoint.com/how-to-create-a-file-in-java - How to create/write to new file
+4. https://docs.oracle.com - Referencing the different structures and their methods
+5. https://developer.mozilla.org/en-US/docs/Web/HTTP/Status#successful_responses - Status codes + meanings
+6. https://dzone.com/articles/determining-file-type-in-java#:~:text=getContentType(),content%20type%20of%20a%20file. - Determine the MIME type of a file
+7. https://www.digitalocean.com/community/tutorials/java-randomaccessfile-example - Accessing file from different positions
