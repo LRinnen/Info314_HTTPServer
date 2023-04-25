@@ -10,10 +10,14 @@ public class HTTPServer {
     try {
       String line = input.readLine();
 
-      // Skip to the body
-      // **FIX** Is there a better way?
+      // Get length of body
+      int contentLength = 0;
       while (line != null && line.length() > 0) {
         line = input.readLine();
+        String[] tokens = line.split(": ");
+        if (tokens[0].equals("Content-Length")) {
+          contentLength = Integer.parseInt(tokens[1]);
+        }
       }
 
       // Reference to new file
@@ -33,23 +37,21 @@ public class HTTPServer {
       FileOutputStream fos = new FileOutputStream(newFile, false);
 
       // Read body and write to the new file
-      line = input.readLine();
-      while (line != null && line.length() > 0) {
-        fos.write(line.toString().getBytes());
-        fos.write("\n".getBytes());
-        line = input.readLine();
-      }
+      char[] body = new char[contentLength];
+      input.read(body, 0, contentLength);
+      fos.write(new String(body).getBytes());
+
       System.out.println("Wrote request body to file");
 
 
       // Check to see which status code to return
       if (created) {
         // True, file didn't exist beforehand - 201 Created
-        String statusCode = "201 Created HTTP1.1\n\n";
+        String statusCode = "HTTP/1.1 201 Created\n\n";
         output.write(statusCode.getBytes());
       } else {
         // False, file did exist beforehand - 200 OK
-        String statusCode = "200 OK HTTP1.1\n\n";
+        String statusCode = "HTTP/1.1 200 OK \n\n";
         output.write(statusCode.getBytes());
       }
       System.out.println("Request complete, response sent!");
@@ -73,28 +75,20 @@ public class HTTPServer {
 
         // File info
         String fileType = Files.probeContentType(filePath.toPath());
-        String fileLength = String.valueOf(filePath.length());
-        String statusCode = "200 OK HTTP1.1\nContent-Type: " + fileType + "\nContent-Length: " + fileLength + "\n\n";
+        byte[] file = Files.readAllBytes(filePath.toPath());
+        String statusCode = "HTTP/1.1 200 OK\nContent-Type: " + fileType + "\nContent-Length: " + file.length + "\n\n";
         output.write(statusCode.getBytes());
 
-        // Read file and write to output
-        BufferedReader file = new BufferedReader(new FileReader(filePath));
-        String line = file.readLine();
-        while (line != null && line.length() > 0) {
-          output.write(line.getBytes());
-          line = file.readLine();
-        }
+        output.write(file);
 
-        // End the response
-        output.write("\n\n".getBytes());
-
-        file.close();
-
+        output.flush();
       } else {
         // File doesn't exist
         System.out.println("File not found");
-        String statusCode = "404 Not Found HTTP1.1\n\n";
+        String body = "<html><body><img src='https://http.cat/404'></body></html>";
+        String statusCode = "HTTP/1.1 404 Not Found\nContent-Type: text/html\nContent-Length " + body.getBytes().length + "\n\n";
         output.write(statusCode.getBytes());
+        output.write(body.getBytes());
       }
 
       System.out.println("Request complete, response sent!");
@@ -115,68 +109,51 @@ public class HTTPServer {
       if (filePath.exists()) {
         System.out.println("File found");
 
-        // Add new text to file
-        RandomAccessFile file = new RandomAccessFile(filePath, "rw");
-
-        // Move pointer to the bottom of the html body
-        long position = file.length() - 16;
-        file.seek(position);
-
-
         String inputLine = input.readLine();
 
-        // Skip to the body
-        // **FIX** Is there a better way?
+        // Get length of body
+        int contentLength = 0;
         while (inputLine != null && inputLine.length() > 0) {
           inputLine = input.readLine();
+          String[] tokens = inputLine.split(": ");
+          if (tokens[0].equals("Content-Length")) {
+            contentLength = Integer.parseInt(tokens[1]);
+          }
         }
 
-        // Read input text and write to the file
-        inputLine = input.readLine();
-        while (inputLine != null && inputLine.length() > 0) {
-          file.write(inputLine.toString().getBytes());
-          file.write("\n".getBytes());
-          inputLine = input.readLine();
-        }
+        // Add new text to file
+        FileOutputStream fos = new FileOutputStream(filePath, true);
 
-        // Add the ending of the html file again
-        file.write("</body>\n".getBytes());
-        file.write("</html>\n".getBytes());
+        char[] body = new char[contentLength];
+        input.read(body, 0, contentLength);
+        fos.write(new String(body).getBytes());
 
         System.out.println("Added new text to the file");
 
-
         // File info
         String fileType = Files.probeContentType(filePath.toPath());
-        String fileLength = String.valueOf(filePath.length());
-        String statusCode = "200 OK HTTP1.1\nContent-Type: " + fileType + "\nContent-Length: " + fileLength + "\n\n";
+        byte[] file = Files.readAllBytes(filePath.toPath());
+        String statusCode = "HTTP/1.1 200 OK\nContent-Type: " + fileType + "\nContent-Length: " + file.length + "\n\n";
         output.write(statusCode.getBytes());
 
-        // Read file and write to output
-        BufferedReader fileReader = new BufferedReader(new FileReader(filePath));
-        String line = fileReader.readLine();
-        while (line != null && line.length() > 0) {
-          output.write(line.getBytes());
-          line = fileReader.readLine();
-        }
+        output.write(file);
 
-        // End the response
-        output.write("\n\n".getBytes());
-
-        file.close();
-        fileReader.close();
+        output.flush();
+        fos.close();
 
       } else {
         // File doesn't exist
         System.out.println("File not found");
-        String statusCode = "404 Not Found HTTP1.1\n\n";
+        String body = "<html><body><img src='https://http.cat/404'></body></html>";
+        String statusCode = "HTTP/1.1 404 Not Found\nContent-Type: text/html\nContent-Length " + body.getBytes().length + "\n\n";
         output.write(statusCode.getBytes());
+        output.write(body.getBytes());
       }
 
       System.out.println("Request complete, response sent!");
       System.out.println();
 
-    } catch(Exception e) {
+    } catch (Exception e) {
       e.printStackTrace();
     }
   }
@@ -189,12 +166,14 @@ public class HTTPServer {
 
       if (file.delete()) {
         // File sucessfully deleted
-        String statusCode = "200 OK HTTP1.1\n\n";
+        String statusCode = "HTTP/1.1 200 OK\n\n";
         output.write(statusCode.getBytes());
       } else {
         // File failed to delete
-        String statusCode = "500 Internal Server Error HTTP1.1\n\n";
+        String body = "<html><body><img src='https://http.cat/500'></body></html>";
+        String statusCode = "HTTP/1.1 500 Internal Server Error\nContent-Type: text/html\nContent-Length " + body.getBytes().length + "\n\n";
         output.write(statusCode.getBytes());
+        output.write(body.getBytes());
       }
 
       System.out.println("Request complete, response sent!");
@@ -215,6 +194,7 @@ public class HTTPServer {
         InputStreamReader input = new InputStreamReader(socket.getInputStream());
         BufferedReader bufInput = new BufferedReader(input);
         String firstLine = bufInput.readLine();
+        System.out.println(firstLine);
         String[] info = firstLine.split(" ");
         String method = info[0];
         String name = info[1];
@@ -239,8 +219,10 @@ public class HTTPServer {
 
         } else {
           // throw error - request doesn't exist
-          String error = "400 Bad Request HTTP1.1\n\n";
-          output.write(error.getBytes());
+          String body = "<html><body><img src='https://http.cat/400'></body></html>";
+          String statusCode = "HTTP/1.1 400 Bad Request\nContent-Type: text/html\nContent-Length " + body.getBytes().length + "\n\n";
+          output.write(statusCode.getBytes());
+          output.write(body.getBytes());
         }
 
         System.out.println();
